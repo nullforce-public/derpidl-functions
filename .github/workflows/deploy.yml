@@ -95,18 +95,18 @@ jobs:
         app-name: ${{ needs.bicep-development.outputs.functionAppName }}
         package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
 
-  clean-development:
-    runs-on: ubuntu-latest
-    environment: clean
-    needs: deploy-development
-    steps:
-    - name: Login via Azure CLI
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
+  # clean-development:
+  #   runs-on: ubuntu-latest
+  #   environment: clean
+  #   needs: deploy-development
+  #   steps:
+  #   - name: Login via Azure CLI
+  #     uses: azure/login@v1
+  #     with:
+  #       creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - name: Delete Resource Group
-      run: az group delete --resource-group ${{ env.ResourceGroupName }} --yes
+  #   - name: Delete Resource Group
+  #     run: az group delete --resource-group ${{ env.ResourceGroupName }} --yes
 
   # bicep-production:
   #   runs-on: ubuntu-latest

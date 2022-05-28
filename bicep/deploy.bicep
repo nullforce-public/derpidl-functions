@@ -47,10 +47,39 @@ resource funcappstorage 'Microsoft.Storage/storageAccounts@2021-09-01' = {
   }
 }
 
+// Storage Queues
+resource queueService 'Microsoft.Storage/storageAccounts/queueServices@2021-09-01' = {
+  name: 'default'
+  parent: funcappstorage
+}
+
+resource scheduledTagsQueue 'Microsoft.Storage/storageAccounts/queueServices/queues@2021-09-01' = {
+  name: 'scheduled-tags'
+  parent: queueService
+}
+
+// Storage Tables
+resource tableService 'Microsoft.Storage/storageAccounts/tableServices@2021-09-01' = {
+  name: 'default'
+  parent: funcappstorage
+}
+
+resource followedTagsTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2021-09-01' = {
+  name: 'FollowedTags'
+  parent: tableService
+}
+
+resource sitesTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2021-09-01' = {
+  name: 'Sites'
+  parent: tableService
+}
+
+// Function App
 resource funcappsettings 'Microsoft.Web/sites/config@2021-03-01' = {
   name: 'appsettings'
   parent: funcapp
   properties: {
+    StorageConnectionString: storageAccountConnectionString
     AzureWebJobsStorage: storageAccountConnectionString
     FUNCTIONS_EXTENSION_VERSION: '~4'
     FUNCTIONS_WORKER_RUNTIME: 'dotnet'
