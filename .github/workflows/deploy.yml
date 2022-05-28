@@ -1,0 +1,161 @@
+name: Deploy Azure Functions
+
+env:
+  AZURE_FUNCTIONAPP_NAME: nfderpidlfunc
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: '.'
+  DOTNET_VERSION: '6.*'
+  Location: 'southcentralus'
+  ResourceGroupName: 'nf-derpidl-dev'
+  DEV_ResourceGroupName: 'nf-derpidl-dev'
+  PRD_ResourceGroupName: 'nf-derpidl-new-prd'
+
+on:
+  push:
+    paths:
+      - 'bicep/**'
+      - 'src/**'
+      - 'tests/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v2
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+    - name: Setup dependency caching for faster builds
+      uses: actions/cache@v3
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+    - name: Build with .NET
+      run: dotnet build --configuration Release
+    - name: dotnet publish
+      run: dotnet publish -c Release -o ${{ env.DOTNET_ROOT }}/myapp
+    - name: Upload artifact for deployment job
+      uses: actions/upload-artifact@v3
+      with:
+        name: .net-app
+        path: ${{ env.DOTNET_ROOT }}/myapp
+
+  bicep-development:
+    runs-on: ubuntu-latest
+    environment: development
+    outputs:
+      functionAppName: ${{ steps.bicep.outputs.functionAppName }}
+      functionAppUrl: ${{ steps.bicep.outputs.functionAppUrl }}
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Login via Azure CLI
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Create Resource Group
+      run: az group create --location ${{ env.Location }} --resource-group ${{ env.ResourceGroupName }}
+
+    - id: bicep
+      uses: azure/arm-deploy@v1
+      with:
+        scope: resourcegroup
+        resourceGroupName: ${{ env.ResourceGroupName }}
+        region: ${{ env.Location }}
+        template: bicep/deploy.bicep
+
+  deploy-development:
+    runs-on: ubuntu-latest
+    environment:
+      name: development
+      url: ${{ needs.bicep-development.outputs.functionAppUrl }}
+    needs: [build, bicep-development]
+    steps:
+    - name: Download artifact from build job
+      uses: actions/download-artifact@v3
+      with:
+        name: .net-app
+
+    - name: Login via Azure CLI
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Deploy to Azure Function App
+      id: fa
+      uses: azure/functions-action@v1
+      with:
+        app-name: ${{ needs.bicep-development.outputs.functionAppName }}
+        package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+
+  clean-development:
+    runs-on: ubuntu-latest
+    environment: clean
+    needs: deploy-development
+    steps:
+    - name: Login via Azure CLI
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Delete Resource Group
+      run: az group delete --resource-group ${{ env.ResourceGroupName }} --yes
+
+  # bicep-production:
+  #   runs-on: ubuntu-latest
+  #   environment: production
+  #   needs: [deploy-development]
+  #   outputs:
+  #     functionAppName: ${{ steps.bicep.outputs.functionAppName }}
+  #     functionAppUrl: ${{ steps.bicep.outputs.functionAppUrl }}
+  #   steps:
+  #   - uses: actions/checkout@v3
+  #     with:
+  #       fetch-depth: 0
+
+  #   - name: Login via Azure CLI
+  #     uses: azure/login@v1
+  #     with:
+  #       creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+  #   - name: Create Resource Group
+  #     run: az group create --location ${{ env.Location }} --resource-group ${{ env.PRD_ResourceGroupName }}
+
+  #   - id: bicep
+  #     uses: azure/arm-deploy@v1
+  #     with:
+  #       scope: resourcegroup
+  #       resourceGroupName: ${{ env.PRD_ResourceGroupName }}
+  #       region: ${{ env.Location }}
+  #       template: bicep/deploy.bicep
+
+  # deploy-production:
+  #   runs-on: ubuntu-latest
+  #   environment:
+  #     name: production
+  #     url: ${{ needs.bicep-production.outputs.functionAppUrl }}
+  #   needs: [build, bicep-production]
+  #   steps:
+  #   - name: Download artifact from build job
+  #     uses: actions/download-artifact@v3
+  #     with:
+  #       name: .net-app
+
+  #   - name: Login via Azure CLI
+  #     uses: azure/login@v1
+  #     with:
+  #       creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+  #   - name: Deploy to Azure Function App
+  #     id: fa
+  #     uses: azure/functions-action@v1
+  #     with:
+  #       app-name: ${{ needs.bicep-production.outputs.functionAppName }}
+  #       package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
