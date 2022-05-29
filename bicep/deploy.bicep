@@ -53,6 +53,11 @@ resource queueService 'Microsoft.Storage/storageAccounts/queueServices@2021-09-0
   parent: funcappstorage
 }
 
+resource imageDownloadsQueue 'Microsoft.Storage/storageAccounts/queueServices/queues@2021-09-01' = {
+  name: 'image-downloads'
+  parent: queueService
+}
+
 resource scheduledTagsQueue 'Microsoft.Storage/storageAccounts/queueServices/queues@2021-09-01' = {
   name: 'scheduled-tags'
   parent: queueService
@@ -66,6 +71,11 @@ resource tableService 'Microsoft.Storage/storageAccounts/tableServices@2021-09-0
 
 resource followedTagsTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2021-09-01' = {
   name: 'FollowedTags'
+  parent: tableService
+}
+
+resource seenImagesTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2021-09-01' = {
+  name: 'SeenImages'
   parent: tableService
 }
 

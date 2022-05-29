@@ -1,4 +1,5 @@
 using Azure.Storage.Queues;
+using DerpiDownload.Functions.Messages;
 using DerpiDownload.Functions.Repositories;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Configuration;
@@ -80,7 +81,7 @@ public class QueueSiteTags
 
             foreach (var tag in tags)
             {
-                var jsonMessage = JsonSerializer.Serialize(new
+                var jsonMessage = JsonSerializer.Serialize(new ScheduledTagMessage
                 {
                     Version = "v0",
                     PartitionKey = tag.PartitionKey,
