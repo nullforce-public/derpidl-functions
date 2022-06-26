@@ -14,7 +14,8 @@ var storagePrefix = replace(prefix, '-', '')
 
 var functionAppName = '${prefix}func${appUniqueString}'
 var functionPlanName = '${prefix}funcplan'
-var functionStorageName = take('${storagePrefix}storage${appUniqueString}', 24)
+var functionStorageName = take('${storagePrefix}fnstorage${appUniqueString}', 24)
+var dataStorageName = take('${storagePrefix}storage${appUniqueString}', 24)
 var storageAccountConnectionString = 'DefaultEndpointsProtocol=https;AccountName=${funcappstorage.name};AccountKey=${listKeys(funcappstorage.id, '2019-06-01').keys[0].value};EndpointSuffix=core.windows.net'
 var tags = {
   'AppName': 'derpidl-functions'
@@ -34,6 +35,22 @@ resource hostingPlan 'Microsoft.Web/serverfarms@2021-03-01' = {
 // Storage account for functions app
 resource funcappstorage 'Microsoft.Storage/storageAccounts@2021-09-01' = {
   name: functionStorageName
+  kind: 'Storage'
+  location: location
+  tags: tags
+  sku: {
+    name: 'Standard_LRS'
+  }
+  properties: {
+    allowBlobPublicAccess: false
+    supportsHttpsTrafficOnly: true
+    minimumTlsVersion: 'TLS1_2'
+  }
+}
+
+// Storage for data
+resource datastorage 'Microsoft.Storage/storageAccounts@2021-09-01' = {
+  name: dataStorageName
   kind: 'StorageV2'
   location: location
   tags: tags
@@ -50,7 +67,7 @@ resource funcappstorage 'Microsoft.Storage/storageAccounts@2021-09-01' = {
 // Storage Queues
 resource queueService 'Microsoft.Storage/storageAccounts/queueServices@2021-09-01' = {
   name: 'default'
-  parent: funcappstorage
+  parent: datastorage
 }
 
 resource imageDownloadsQueue 'Microsoft.Storage/storageAccounts/queueServices/queues@2021-09-01' = {
@@ -66,7 +83,7 @@ resource scheduledTagsQueue 'Microsoft.Storage/storageAccounts/queueServices/que
 // Storage Tables
 resource tableService 'Microsoft.Storage/storageAccounts/tableServices@2021-09-01' = {
   name: 'default'
-  parent: funcappstorage
+  parent: datastorage
 }
 
 resource followedTagsTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2021-09-01' = {
